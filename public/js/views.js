@@ -2,12 +2,21 @@
 
 App.Views.App = Backbone.View.extend({
 	initialize: function(){
+
+		vent.on('contact:edit', this.editContact, this);
 		var addContactView = new App.Views.AddContact({ collection: this.collection });
 
 		var allContactsView = new App.Views.Contacts({ collection: this.collection }).render().el;
 		$('#tableContacts').append(allContactsView);
 
+	},
+
+	editContact :function(contact){
+		var editContactView = new App.Views.EditContact ({ model: contact });
+		$('#editContact').html(editContactView.el);
+
 	}
+
 });
 
 
@@ -63,7 +72,7 @@ App.Views.Contacts = Backbone.View.extend({
 	tagName: 'tbody',
 
 	initialize: function(){
-		this.collection.on('sync', this.addOne, this);
+		this.collection.on('add', this.addOne, this);
 	},
 
 	render: function (){
@@ -85,8 +94,76 @@ App.Views.Contact = Backbone.View.extend({
 
 	template: template('allContactsTemplate'),
 
+	initialize: function(){
+		this.model.on('destroy', this.unrender, this);
+		this.model.on('change', this.render, this);
+	},
+
+	events: {
+		'click a.delete' : 'deleteContact',
+		'click a.edit' : 'editContact'
+	},
+
+	editContact: function(){
+		vent.trigger('contact:edit',this.model);
+	},
+
+	deleteContact:function(){
+		this.model.destroy();
+	},
+
 	render: function(){
-		this.$el.append(this.template(this.model.toJSON()));
+		this.$el.html(this.template(this.model.toJSON()));
+		return this;
+	},
+
+	unrender : function(){
+		this.remove();
+	}
+});
+
+
+//Edit contact View
+
+
+App.Views.EditContact = Backbone.View.extend({
+	template : template('editCOntactTemplate'),
+
+	initialize : function(){
+		this.render();
+
+		this.form = this.$('form');
+		this.firstname = this.form.find('#edit_firstname');
+		this.lastname = this.form.find('#edit_lastname');
+		this.email_address = this.form.find('#edit_email_address');
+		this.description = this.form.find('#edit_description');
+	},
+
+	events :{
+		'submit form': 'submit',
+		'click .cancel': 'cancelEdit'
+	},
+
+	cancelEdit : function(){
+		this.remove();
+	},
+
+	submit : function(e){
+		e.preventDefault();
+		this.model.save({
+			firstname: this.firstname.val(),
+			lastname: this.lastname.val(),
+			email_address: this.email_address.val(),
+			description: this.description.val()
+		});
+
+		this.remove();
+	},
+
+	render : function(){
+		var html = this.template(this.model.toJSON());
+
+		this.$el.html(html);
 		return this;
 	}
 });
